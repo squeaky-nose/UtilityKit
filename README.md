@@ -47,22 +47,34 @@ You can also describe a resource by filename:
 let resource = BundleResource(bundle: .main, "config.json")
 ```
 
-### JsonResourceService
+### JSONResourceService
 
-Decode a bundled JSON resource into a `Decodable` type:
+Decode a bundled JSON resource into a `Decodable & Sendable` type:
 
 ```swift
 import UtilityKit
 
-struct Config: Decodable {
+struct Config: Decodable, Sendable {
     let name: String
     let count: Int
 }
 
 let resource = BundleResource(bundle: .main, "config.json")
-let service = JsonResourceService<Config>(resource)
+let service = JSONResourceService<Config>(resource)
 
-service.content // Config? — decoded value, or nil if the resource is missing or invalid
+service.content // Config? — decoded value, or nil if reading/decoding failed
+service.error   // JSONResourceServiceError? — the reason, if it failed
+```
+
+`T` must be `Sendable` because `JSONResourceService` itself is `Sendable` — it's a `final class` with only immutable (`let`) stored properties, so instances can be safely shared across threads/tasks as long as the decoded content can be too.
+
+`error` is `nil` on success, or one of:
+
+```swift
+public enum JSONResourceServiceError: Error {
+    case resourceUnavailable(BundleResource)
+    case decodingFailed(resource: BundleResource, underlying: Error)
+}
 ```
 
 A custom `JSONDecoder` can be supplied, e.g. to configure a key decoding strategy:
@@ -71,7 +83,7 @@ A custom `JSONDecoder` can be supplied, e.g. to configure a key decoding strateg
 let decoder = JSONDecoder()
 decoder.keyDecodingStrategy = .convertFromSnakeCase
 
-let service = JsonResourceService<Config>(resource, decoder: decoder)
+let service = JSONResourceService<Config>(resource, decoder: decoder)
 ```
 
 ## Testing
