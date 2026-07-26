@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct BundleResource: CustomStringConvertible {
+public struct BundleResource: CustomStringConvertible, @unchecked Sendable {
     public let bundle: Bundle
     public let resourceName: String
     public let resourceExtension: String
