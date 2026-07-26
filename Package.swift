@@ -7,7 +7,7 @@ let package = Package(
     name: "UtilityKit",
     platforms: [
         .iOS(.v15),
-        .macOS(.v12),
+        .macOS(.v13),
         .tvOS(.v15),
         .watchOS(.v8)
     ],
@@ -26,7 +26,12 @@ let package = Package(
         ),
         .testTarget(
             name: "UtilityKitTests",
-            dependencies: ["UtilityKit"]
+            dependencies: ["UtilityKit"],
+            resources: [
+                .copy("resource/sample.json"),
+                .copy("resource/snake_case.json"),
+                .copy("resource/malformed.json"),
+            ]
         ),
     ]
 )
