@@ -29,11 +29,14 @@ jobs:
       matrix:
         include:
           - platform: iOS
-            destination: "platform=iOS Simulator,name=iPhone 16"
+            runtime: iOS
+            devicePattern: iPhone
           - platform: tvOS
-            destination: "platform=tvOS Simulator,name=Apple TV"
+            runtime: tvOS
+            devicePattern: Apple TV
           - platform: watchOS
-            destination: "platform=watchOS Simulator,name=Apple Watch Series 10 (46mm)"
+            runtime: watchOS
+            devicePattern: Apple Watch
 
     steps:
       - uses: actions/checkout@v4
@@ -43,8 +46,27 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      # Simulator names/versions change with every Xcode release, so rather than
+      # hard-coding one (e.g. "iPhone 16"), pick whatever's actually installed on
+      # this runner: the latest available runtime for the platform, and the first
+      # device of the right family within it.
+      - name: Find ${{ matrix.platform }} simulator
+        id: destination
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available "${{ matrix.runtime }}" -j \
+            | jq -r --arg pattern "${{ matrix.devicePattern }}" \
+                '[.devices | to_entries[] | .value[] | select(.name | test($pattern))] | .[0].udid // empty')
+          if [ -z "$UDID" ]; then
+            echo "::error::No available ${{ matrix.platform }} simulator matching '${{ matrix.devicePattern }}' found"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Using simulator $UDID"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
       - name: Test on ${{ matrix.platform }}
         run: |
           xcodebuild test \
             -scheme UtilityKit \
-            -destination '${{ matrix.destination }}'
+            -destination "id=${{ steps.destination.outputs.udid }}"
